@@ -1,0 +1,11 @@
+<section class="home">
+  <div class="header">
+    <p>User : 0</p>
+    <div class="time">Time:</div>
+    <p>PC : 0</p>
+  </div>
+  <div class="main">
+    <div class="block" *ngFor="let item of countBlockArray"></div>
+  </div>
+</section>
+<app-start-popup *ngIf="isOpenPopup"></app-start-popup>
