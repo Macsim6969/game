@@ -16,7 +16,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   public countBlockArray: number[];
   public isOpenPopup: boolean;
   public isFinishPopup: boolean;
-  public timeToClick: number = 250; // Таймер на клик 3 секунды
+  public timeToClick: number = 850; // Таймер на клик 3 секунды
   public remainingTime: number = this.timeToClick; // Остаток времени
   public playerScore: number = 0;
   public computerScore: number = 0;
