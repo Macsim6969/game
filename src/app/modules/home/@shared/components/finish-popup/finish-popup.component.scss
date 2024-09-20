@@ -1,0 +1,35 @@
+.finish {
+  position: fixed;
+  inset: 0;
+  background-color: rgba($color: #000000, $alpha: .5);
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .content {
+    padding: 18px 35px;
+    background-color: rgb(255, 255, 255);
+    border-radius: 18px;
+    width: 350px;
+    height: 450px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 15px;
+
+    .contnet_header {
+      font-weight: 700;
+      font-size: 2.6rem;
+    }
+
+    p {
+      font-size: 2.2rem;
+    }
+  }
+
+}

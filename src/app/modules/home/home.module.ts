@@ -5,6 +5,8 @@ import { HomeComponent } from './home.component';
 import { InitGameServcie } from './@shared/services/initGame.service';
 import { StartPopupComponent } from './@shared/components/start-popup/start-popup.component';
 import { PopupGameServcie } from './@shared/services/popupGame.service';
+import { PopupFinishGameServcie } from './@shared/services/popupFinishGame.service';
+import { FinishPopupComponent } from './@shared/components/finish-popup/finish-popup.component';
 
 const routes: Routes = [
   { path: '', component: HomeComponent }
@@ -13,7 +15,8 @@ const routes: Routes = [
 @NgModule({
   declarations: [
     HomeComponent,
-    StartPopupComponent
+    StartPopupComponent,
+    FinishPopupComponent
   ],
   imports: [
     CommonModule,
@@ -24,7 +27,8 @@ const routes: Routes = [
   ],
   providers: [
     InitGameServcie,
-    PopupGameServcie
+    PopupGameServcie,
+    PopupFinishGameServcie
   ]
 })
 export class HomeModule { }

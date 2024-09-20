@@ -2,7 +2,8 @@ import { Component, ElementRef, OnDestroy, QueryList, Renderer2, ViewChildren } 
 import { InitGameServcie } from './@shared/services/initGame.service';
 import { OnInit } from '@angular/core';
 import { PopupGameServcie } from './@shared/services/popupGame.service';
-import { interval, Subscription, takeWhile } from 'rxjs';
+import { combineLatest, interval, Subject, Subscription, takeUntil, takeWhile } from 'rxjs';
+import { PopupFinishGameServcie } from './@shared/services/popupFinishGame.service';
 
 @Component({
   selector: 'app-home',
@@ -10,28 +11,31 @@ import { interval, Subscription, takeWhile } from 'rxjs';
   styleUrl: './home.component.scss'
 })
 export class HomeComponent implements OnInit, OnDestroy {
+  private destroy$: Subject<void> = new Subject<void>();
   @ViewChildren('array') allArray?: QueryList<ElementRef>;
   public countBlockArray: number[];
-  public isOpenPopup: boolean = false;
-  public timeToClick: number = 3000; // Таймер на клик 3 секунды
+  public isOpenPopup: boolean;
+  public isFinishPopup: boolean;
+  public timeToClick: number = 250; // Таймер на клик 3 секунды
   public remainingTime: number = this.timeToClick; // Остаток времени
   public playerScore: number = 0;
   public computerScore: number = 0;
   private clickTimeout: any;
   private timeInterval: any;
-  private startGameSubscription: Subscription;
   private gameOver: boolean = false; // Флаг для остановки игры
   private occupiedBlocks: Set<number> = new Set<number>(); // Множество для отслеживания занятых блоков
 
   constructor(
     private initGame: InitGameServcie,
     private popupGame: PopupGameServcie,
+    private popupFinishGame: PopupFinishGameServcie,
     private renderer: Renderer2
   ) { }
 
   ngOnInit(): void {
     this.initGameService();
     this.streamToStartGame();
+    this.initOpenFinisGamePopup();
   }
 
   private initGameService() {
@@ -39,12 +43,21 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private streamToStartGame() {
-    this.startGameSubscription = this.popupGame._isOpenPopup$.subscribe((data: boolean) => {
+    this.popupGame._isOpenPopup$.pipe(takeUntil(this.destroy$)).subscribe((data: boolean) => {
       this.isOpenPopup = data;
       if (!data && !this.gameOver) {
         this.startRandomBlock();
       }
     });
+  }
+
+  private initOpenFinisGamePopup() {
+    combineLatest(([this.popupFinishGame._isFinishPopup$, this.popupFinishGame._restartGame$])).pipe(takeUntil(this.destroy$)).subscribe(([isPopup, restartGame]) => {
+      this.isFinishPopup = isPopup;
+      if (restartGame) {
+        this.resetGame();
+      }
+    })
   }
 
   private startRandomBlock() {
@@ -129,8 +142,18 @@ export class HomeComponent implements OnInit, OnDestroy {
   private checkGameEnd() {
     if (this.playerScore >= 10 || this.computerScore >= 10) {
       this.gameOver = true; // Флаг для остановки игры
-      this.isOpenPopup = true; // Показываем окно окончания игры
       this.clearTimers(); // Очищаем все таймеры
+      this.popupFinishGame._isFinishPopup = true;
+      this.checkWhoseWin();
+      this.resetAllBlocks();
+    }
+  }
+
+  private checkWhoseWin() {
+    if (this.playerScore >= 10) {
+      this.popupFinishGame._isWinData = { isWin: 'User', PCScored: this.computerScore, UserScored: this.playerScore };
+    } else if (this.computerScore >= 10) {
+      this.popupFinishGame._isWinData = { isWin: 'PC', PCScored: this.computerScore, UserScored: this.playerScore };
     }
   }
 
@@ -143,14 +166,27 @@ export class HomeComponent implements OnInit, OnDestroy {
   private resetGame() {
     this.playerScore = 0;
     this.computerScore = 0;
+    this.popupFinishGame._restartGame = false;
+    this.popupFinishGame._isWinData = null;
     this.occupiedBlocks.clear(); // Очищаем занятые блоки при перезапуске игры
     this.clearTimers();
+    this.resetAllBlocks(); // Сбрасываем стили всех блоков
     this.gameOver = false; // Сбрасываем флаг окончания игры
-    this.startRandomBlock(); // Начинаем новую игру
+    this.isOpenPopup = true // Начинаем новую игру
   }
+  
+  private resetAllBlocks() {
+    this.allArray?.forEach((block: ElementRef) => {
+      this.renderer.removeClass(block.nativeElement, 'random-class');
+      this.renderer.removeClass(block.nativeElement, 'red');
+      this.renderer.removeClass(block.nativeElement, 'green');
+    });
+  }
+  
 
   ngOnDestroy(): void {
-    this.startGameSubscription ? this.startGameSubscription.unsubscribe() : null;
     this.clearTimers();
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }
