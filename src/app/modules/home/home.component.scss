@@ -48,7 +48,7 @@
     }
 
     @media (max-width: 460px) {
-      grid-template-columns: repeat(7, 45px);
+      grid-template-columns: repeat(6, 60px);
     }
 
     .block {
@@ -60,6 +60,10 @@
 
       @media (max-width: 920px) {
         height: 45px;
+      }
+
+      @media (max-width: 460px) {
+        height: 60px;
       }
 
       &.random-class {
