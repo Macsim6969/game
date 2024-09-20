@@ -12,11 +12,17 @@ import { interval, Subscription, takeWhile } from 'rxjs';
 export class HomeComponent implements OnInit, OnDestroy {
   @ViewChildren('array') allArray?: QueryList<ElementRef>;
   public countBlockArray: number[];
-  public isOpenPopup: boolean;
-  public timeLeft: number = 10000;
-  public interval: any;
-
+  public isOpenPopup: boolean = false;
+  public timeToClick: number = 3000; // Таймер на клик 3 секунды
+  public remainingTime: number = this.timeToClick; // Остаток времени
+  public playerScore: number = 0;
+  public computerScore: number = 0;
+  private clickTimeout: any;
+  private timeInterval: any;
   private startGameSubscription: Subscription;
+  private gameOver: boolean = false; // Флаг для остановки игры
+  private occupiedBlocks: Set<number> = new Set<number>(); // Множество для отслеживания занятых блоков
+
   constructor(
     private initGame: InitGameServcie,
     private popupGame: PopupGameServcie,
@@ -35,79 +41,116 @@ export class HomeComponent implements OnInit, OnDestroy {
   private streamToStartGame() {
     this.startGameSubscription = this.popupGame._isOpenPopup$.subscribe((data: boolean) => {
       this.isOpenPopup = data;
-      if (!data) {
-        this.startTimer();
+      if (!data && !this.gameOver) {
         this.startRandomBlock();
       }
-
     });
   }
 
   private startRandomBlock() {
-    const randomIndices = this.generateRandomIndices(this.allArray.length, 1);
+    if (this.gameOver) return; // Если игра завершена, не запускаем новый раунд
 
-    randomIndices.forEach(index => {
-      const block = this.allArray.toArray()[index];
-      this.addRandomClass(block.nativeElement);
+    const availableIndices = this.getAvailableIndices(); // Получаем доступные индексы
+    if (availableIndices.length === 0) return; // Если нет доступных индексов, остановить игру
+
+    const randomIndex = this.generateRandomIndex(availableIndices.length);
+    const blockIndex = availableIndices[randomIndex];
+
+    const block = this.allArray.toArray()[blockIndex];
+    this.renderer.addClass(block.nativeElement, 'random-class');
+
+    // Сбрасываем таймер времени на клик и отображаем его
+    this.remainingTime = this.timeToClick;
+    this.startClickTimer();
+
+    // Запускаем таймер на клик
+    this.clickTimeout = setTimeout(() => {
+      this.handleTimeout(block.nativeElement, blockIndex); // Обрабатываем случай, когда не успели кликнуть
+    }, this.timeToClick);
+  }
+
+  private startClickTimer() {
+    // Интервал, уменьшающий оставшееся время каждую миллисекунду
+    this.timeInterval = interval(10).pipe(
+      takeWhile(() => this.remainingTime > 0 && !this.gameOver) // Добавляем проверку на окончание игры
+    ).subscribe(() => {
+      this.remainingTime -= 10;
     });
   }
 
-  private generateRandomIndices(max: number, count: number): number[] {
-    const indices: number[] = [];
-    while (indices.length < count) {
-      const randomIndex = Math.floor(Math.random() * max);
-      if (!indices.includes(randomIndex)) {
-        indices.push(randomIndex);
-      }
-    }
-    return indices;
-  }
+  private handleTimeout(element: HTMLElement, index: number) {
+    if (this.gameOver) return; // Останавливаем действия, если игра завершена
 
-  private addRandomClass(element: HTMLElement) {
-    element.classList.add('random-class');
-  }
-
-  private startTimer() {
-    this.interval = interval(10).pipe(
-      takeWhile(() => this.timeLeft > 0)
-    ).subscribe(() => {
-      this.timeLeft -= 10;
-      if (this.timeLeft <= 0) {
-        this.isOpenPopup = true;
-      }
-    })
-  }
-
-  public getFormattedTime(): string {
-    const seconds = Math.floor(this.timeLeft / 1000);
-    const milliseconds = this.timeLeft % 1000;
-    return `${seconds}.${milliseconds}`;
+    this.renderer.removeClass(element, 'random-class');
+    this.renderer.addClass(element, 'red'); // Меняем цвет на красный
+    this.computerScore += 1; // Увеличиваем счет компьютера
+    this.occupiedBlocks.add(index); // Добавляем блок в множество занятых блоков
+    this.clearTimers(); // Очищаем таймеры
+    this.checkGameEnd(); // Проверяем окончание игры
+    if (!this.gameOver) this.startRandomBlock(); // Запускаем новый блок, если игра не окончена
   }
 
   public click(event: MouseEvent) {
     const element = event.target as HTMLElement;
+    if (this.gameOver) return; // Останавливаем действия, если игра завершена
+
+    const blockIndex = this.allArray.toArray().findIndex(block => block.nativeElement === element);
     if (element.classList.contains('random-class')) {
-      // Если был клик на элементе с классом "yellow", запускаем новый рандом
-      this.assignRandomClass();
+      clearTimeout(this.clickTimeout); // Сбрасываем таймер, если игрок успел кликнуть
+      this.renderer.removeClass(element, 'random-class');
+      this.renderer.addClass(element, 'green'); // Меняем цвет на зеленый
+      this.playerScore += 1; // Увеличиваем счет игрока
+      this.occupiedBlocks.add(blockIndex); // Добавляем блок в множество занятых блоков
+      this.clearTimers(); // Очищаем таймеры
+      this.checkGameEnd(); // Проверяем окончание игры
+      if (!this.gameOver) this.startRandomBlock(); // Начинаем новый раунд, если игра не окончена
     }
   }
 
-  private assignRandomClass() {
-    // Удаляем "yellow" со всех блоков
-    this.allArray.forEach(block => {
-      this.renderer.removeClass(block.nativeElement, 'random-class');
-    });
-  
-    // Генерируем случайный индекс и присваиваем класс "yellow"
-    const randomIndex = this.generateRandomIndices(this.allArray.length, 1)[0];
-    const randomBlock = this.allArray.toArray()[randomIndex];
-    this.renderer.addClass(randomBlock.nativeElement, 'random-class');
+  private clearTimers() {
+    clearTimeout(this.clickTimeout); // Очищаем таймер клика
+    if (this.timeInterval) {
+      this.timeInterval.unsubscribe(); // Останавливаем обновление таймера
+    }
+  }
+
+  private generateRandomIndex(max: number): number {
+    return Math.floor(Math.random() * max);
+  }
+
+  private getAvailableIndices(): number[] {
+    // Получаем список индексов блоков, которые еще не были заняты
+    return this.allArray
+      ?.toArray()
+      .map((_, index) => index)
+      .filter(index => !this.occupiedBlocks.has(index)) || [];
+  }
+
+  private checkGameEnd() {
+    if (this.playerScore >= 10 || this.computerScore >= 10) {
+      this.gameOver = true; // Флаг для остановки игры
+      this.isOpenPopup = true; // Показываем окно окончания игры
+      this.clearTimers(); // Очищаем все таймеры
+    }
+  }
+
+  public getFormattedRemainingTime(): string {
+    const seconds = Math.floor(this.remainingTime / 1000);
+    const milliseconds = this.remainingTime % 1000;
+    return `${seconds}.${milliseconds}`;
+  }
+
+  private resetGame() {
+    this.playerScore = 0;
+    this.computerScore = 0;
+    this.occupiedBlocks.clear(); // Очищаем занятые блоки при перезапуске игры
+    this.clearTimers();
+    this.gameOver = false; // Сбрасываем флаг окончания игры
+    this.startRandomBlock(); // Начинаем новую игру
   }
 
   ngOnDestroy(): void {
     this.startGameSubscription ? this.startGameSubscription.unsubscribe() : null;
-    if (this.interval) {
-      clearInterval(this.interval);
-    }
+    this.clearTimers();
   }
 }

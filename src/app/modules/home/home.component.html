@@ -1,8 +1,8 @@
 <section class="home">
   <div class="header">
-    <p>User : 0</p>
-    <div class="time">Time: {{ getFormattedTime() }}s</div>
-    <p>PC : 0</p>
+    <p>User : {{playerScore}}</p>
+    <div class="time">Time: {{ getFormattedRemainingTime() }}s</div>
+    <p>PC : {{computerScore}}</p>
   </div>
   <div class="main" >
     <button class="block" #array *ngFor="let item of countBlockArray" (click)="click($event)"></button>

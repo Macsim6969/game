@@ -43,6 +43,13 @@
         background-color: yellow;
         cursor: pointer;
       }
+      &.green {
+        background-color: green; /* Цвет при успешном клике */
+      }
+      
+      &.red {
+        background-color: red; /* Цвет при неуспешном клике */
+      }
     }
   }
 }
