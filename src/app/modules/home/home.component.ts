@@ -2,8 +2,9 @@ import { Component, ElementRef, OnDestroy, QueryList, Renderer2, ViewChildren } 
 import { InitGameServcie } from './@shared/services/initGame.service';
 import { OnInit } from '@angular/core';
 import { PopupGameServcie } from './@shared/services/popupGame.service';
-import { combineLatest, interval, Subject, Subscription, takeUntil, takeWhile } from 'rxjs';
+import { combineLatest, interval, Subject, takeUntil, takeWhile } from 'rxjs';
 import { PopupFinishGameServcie } from './@shared/services/popupFinishGame.service';
+import { GameStateService } from './@shared/services/gameState.service';
 
 @Component({
   selector: 'app-home',
@@ -16,7 +17,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   public countBlockArray: number[];
   public isOpenPopup: boolean;
   public isFinishPopup: boolean;
-  public timeToClick: number = 850; // Таймер на клик 3 секунды
+  public timeToClick: number = 820; // Таймер на клик 3 секунды
   public remainingTime: number = this.timeToClick; // Остаток времени
   public playerScore: number = 0;
   public computerScore: number = 0;
@@ -29,7 +30,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     private initGame: InitGameServcie,
     private popupGame: PopupGameServcie,
     private popupFinishGame: PopupFinishGameServcie,
-    private renderer: Renderer2
+    private renderer: Renderer2,
+    private gameStateService: GameStateService
   ) { }
 
   ngOnInit(): void {
@@ -94,13 +96,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private handleTimeout(element: HTMLElement, index: number) {
     if (this.gameOver) return; // Останавливаем действия, если игра завершена
 
-    this.renderer.removeClass(element, 'random-class');
-    this.renderer.addClass(element, 'red'); // Меняем цвет на красный
-    this.computerScore += 1; // Увеличиваем счет компьютера
-    this.occupiedBlocks.add(index); // Добавляем блок в множество занятых блоков
-    this.clearTimers(); // Очищаем таймеры
-    this.checkGameEnd(); // Проверяем окончание игры
-    if (!this.gameOver) this.startRandomBlock(); // Запускаем новый блок, если игра не окончена
+    this.clickSettings(index, 'computerScore', element, 'red');
   }
 
   public click(event: MouseEvent) {
@@ -110,14 +106,19 @@ export class HomeComponent implements OnInit, OnDestroy {
     const blockIndex = this.allArray.toArray().findIndex(block => block.nativeElement === element);
     if (element.classList.contains('random-class')) {
       clearTimeout(this.clickTimeout); // Сбрасываем таймер, если игрок успел кликнуть
-      this.renderer.removeClass(element, 'random-class');
-      this.renderer.addClass(element, 'green'); // Меняем цвет на зеленый
-      this.playerScore += 1; // Увеличиваем счет игрока
-      this.occupiedBlocks.add(blockIndex); // Добавляем блок в множество занятых блоков
-      this.clearTimers(); // Очищаем таймеры
-      this.checkGameEnd(); // Проверяем окончание игры
-      if (!this.gameOver) this.startRandomBlock(); // Начинаем новый раунд, если игра не окончена
+     
+      this.clickSettings(blockIndex, 'playerScore', element, 'green');
     }
+  }
+
+  private clickSettings(index: number, keyScore: 'playerScore' | "computerScore", element: HTMLElement, choiceColor: 'red' | 'green') {
+    this.renderer.removeClass(element, 'random-class');
+    this.renderer.addClass(element, choiceColor); // Меняем цвет
+    this[keyScore] += 1;
+    this.occupiedBlocks.add(index);
+    this.clearTimers(); // Очищаем таймеры
+    this.checkGameEnd(); // Проверяем окончание игры
+    if (!this.gameOver) this.startRandomBlock(); // Начинаем новый раунд, если игра не окончена
   }
 
   private clearTimers() {
@@ -150,11 +151,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private checkWhoseWin() {
-    if (this.playerScore >= 10) {
-      this.popupFinishGame._isWinData = { isWin: 'User', PCScored: this.computerScore, UserScored: this.playerScore };
-    } else if (this.computerScore >= 10) {
-      this.popupFinishGame._isWinData = { isWin: 'PC', PCScored: this.computerScore, UserScored: this.playerScore };
-    }
+    this.gameStateService.checkWhoseWin(this.playerScore, this.computerScore);
   }
 
   public getFormattedRemainingTime(): string {
@@ -174,7 +171,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.gameOver = false; // Сбрасываем флаг окончания игры
     this.isOpenPopup = true // Начинаем новую игру
   }
-  
+
   private resetAllBlocks() {
     this.allArray?.forEach((block: ElementRef) => {
       this.renderer.removeClass(block.nativeElement, 'random-class');
@@ -182,7 +179,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.renderer.removeClass(block.nativeElement, 'green');
     });
   }
-  
 
   ngOnDestroy(): void {
     this.clearTimers();

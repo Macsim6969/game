@@ -7,6 +7,7 @@ import { StartPopupComponent } from './@shared/components/start-popup/start-popu
 import { PopupGameServcie } from './@shared/services/popupGame.service';
 import { PopupFinishGameServcie } from './@shared/services/popupFinishGame.service';
 import { FinishPopupComponent } from './@shared/components/finish-popup/finish-popup.component';
+import { GameStateService } from './@shared/services/gameState.service';
 
 const routes: Routes = [
   { path: '', component: HomeComponent }
@@ -28,7 +29,8 @@ const routes: Routes = [
   providers: [
     InitGameServcie,
     PopupGameServcie,
-    PopupFinishGameServcie
+    PopupFinishGameServcie,
+    GameStateService
   ]
 })
 export class HomeModule { }
