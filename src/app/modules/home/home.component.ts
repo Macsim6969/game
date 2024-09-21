@@ -17,14 +17,13 @@ export class HomeComponent implements OnInit, OnDestroy {
   public countBlockArray: number[];
   public isOpenPopup: boolean;
   public isFinishPopup: boolean;
-  public timeToClick: number = 820; // Таймер на клик 3 секунды
+  public timeToClick: number = 900; // Таймер на клик 3 секунды
   public remainingTime: number = this.timeToClick; // Остаток времени
   public playerScore: number = 0;
   public computerScore: number = 0;
   private clickTimeout: any;
   private timeInterval: any;
   private gameOver: boolean = false; // Флаг для остановки игры
-  private occupiedBlocks: Set<number> = new Set<number>(); // Множество для отслеживания занятых блоков
   private availableBlocks: number[] = []; // Массив доступных блоков
 
   constructor(
@@ -85,8 +84,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.clickTimeout = setTimeout(() => {
       this.handleTimeout(block.nativeElement, blockIndex); // Обрабатываем случай, когда не успели кликнуть
     }, this.timeToClick);
-
-    console.log(this.availableBlocks);
   }
 
   private startClickTimer() {
