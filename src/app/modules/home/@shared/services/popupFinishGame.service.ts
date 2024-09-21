@@ -23,11 +23,11 @@ export class PopupFinishGameServcie {
     return this.isFinishPopupSubject;
   }
 
-  set _isWinData(newValue: winData) {
+  set _winStatus(newValue: winData) {
     this.isWinSubject.next(newValue);
   }
 
-  get _isWinData$() {
+  get _winStatus$() {
     return this.isWinSubject;
   }
 

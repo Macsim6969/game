@@ -25,6 +25,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private timeInterval: any;
   private gameOver: boolean = false; // Флаг для остановки игры
   private occupiedBlocks: Set<number> = new Set<number>(); // Множество для отслеживания занятых блоков
+  private availableBlocks: number[] = []; // Массив доступных блоков
 
   constructor(
     private initGame: InitGameServcie,
@@ -42,6 +43,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private initGameService() {
     this.countBlockArray = new Array(this.initGame.initCountBlockGame);
+    this.availableBlocks = Array.from({ length: this.initGame.initCountBlockGame }, (_, index) => index); // Создаем массив доступных блоков
   }
 
   private streamToStartGame() {
@@ -54,34 +56,37 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private initOpenFinisGamePopup() {
-    combineLatest(([this.popupFinishGame._isFinishPopup$, this.popupFinishGame._restartGame$])).pipe(takeUntil(this.destroy$)).subscribe(([isPopup, restartGame]) => {
-      this.isFinishPopup = isPopup;
-      if (restartGame) {
-        this.resetGame();
-      }
-    })
+    combineLatest([this.popupFinishGame._isFinishPopup$, this.popupFinishGame._restartGame$])
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(([isPopup, restartGame]) => {
+        this.isFinishPopup = isPopup;
+        if (restartGame) {
+          this.resetGame();
+        }
+      });
   }
 
   private startRandomBlock() {
     if (this.gameOver) return; // Если игра завершена, не запускаем новый раунд
-
-    const availableIndices = this.getAvailableIndices(); // Получаем доступные индексы
-    if (availableIndices.length === 0) return; // Если нет доступных индексов, остановить игру
-
-    const randomIndex = this.generateRandomIndex(availableIndices.length);
-    const blockIndex = availableIndices[randomIndex];
-
+  
+    if (this.availableBlocks.length === 0) return; // Если нет доступных индексов, остановить игру
+  
+    const randomIndex = this.generateRandomIndex(this.availableBlocks.length);
+    const blockIndex = this.availableBlocks[randomIndex]; // Извлекаем индекс из доступных индексов
+  
     const block = this.allArray.toArray()[blockIndex];
     this.renderer.addClass(block.nativeElement, 'random-class');
-
+  
     // Сбрасываем таймер времени на клик и отображаем его
     this.remainingTime = this.timeToClick;
     this.startClickTimer();
-
+  
     // Запускаем таймер на клик
     this.clickTimeout = setTimeout(() => {
       this.handleTimeout(block.nativeElement, blockIndex); // Обрабатываем случай, когда не успели кликнуть
     }, this.timeToClick);
+
+    console.log(this.availableBlocks);
   }
 
   private startClickTimer() {
@@ -106,7 +111,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     const blockIndex = this.allArray.toArray().findIndex(block => block.nativeElement === element);
     if (element.classList.contains('random-class')) {
       clearTimeout(this.clickTimeout); // Сбрасываем таймер, если игрок успел кликнуть
-     
+
       this.clickSettings(blockIndex, 'playerScore', element, 'green');
     }
   }
@@ -115,7 +120,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.renderer.removeClass(element, 'random-class');
     this.renderer.addClass(element, choiceColor); // Меняем цвет
     this[keyScore] += 1;
-    this.occupiedBlocks.add(index);
+    this.availableBlocks.splice(this.availableBlocks.indexOf(index), 1);
     this.clearTimers(); // Очищаем таймеры
     this.checkGameEnd(); // Проверяем окончание игры
     if (!this.gameOver) this.startRandomBlock(); // Начинаем новый раунд, если игра не окончена
@@ -134,10 +139,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private getAvailableIndices(): number[] {
     // Получаем список индексов блоков, которые еще не были заняты
-    return this.allArray
-      ?.toArray()
-      .map((_, index) => index)
-      .filter(index => !this.occupiedBlocks.has(index)) || [];
+    return this.gameStateService.getAvailableIndices(this.allArray.toArray());
   }
 
   private checkGameEnd() {
@@ -164,8 +166,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.playerScore = 0;
     this.computerScore = 0;
     this.popupFinishGame._restartGame = false;
-    this.popupFinishGame._isWinData = null;
-    this.occupiedBlocks.clear(); // Очищаем занятые блоки при перезапуске игры
+    this.popupFinishGame._winStatus = null;
+    this.availableBlocks = Array.from({ length: this.countBlockArray.length }, (_, index) => index);
     this.clearTimers();
     this.resetAllBlocks(); // Сбрасываем стили всех блоков
     this.gameOver = false; // Сбрасываем флаг окончания игры
@@ -173,11 +175,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private resetAllBlocks() {
-    this.allArray?.forEach((block: ElementRef) => {
-      this.renderer.removeClass(block.nativeElement, 'random-class');
-      this.renderer.removeClass(block.nativeElement, 'red');
-      this.renderer.removeClass(block.nativeElement, 'green');
-    });
+    this.gameStateService.resetBlocks(this.allArray.toArray(), this.renderer);
   }
 
   ngOnDestroy(): void {

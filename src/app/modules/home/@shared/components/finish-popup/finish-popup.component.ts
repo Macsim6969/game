@@ -23,10 +23,12 @@ export class FinishPopupComponent implements OnInit, OnDestroy {
   }
 
   private initPopupFinishService() {
-    this.winDataSubscription = this.popupFinishGame._isWinData$.subscribe((data: winData) => {
-      this.winData = data.isWin;
-      this.playerScored = data.UserScored;
-      this.PCScored = data.PCScored;
+    this.winDataSubscription = this.popupFinishGame._winStatus$.subscribe((data: winData) => {
+      if (data) {
+        this.winData = data.isWin;
+        this.playerScored = data.UserScored;
+        this.PCScored = data.PCScored;
+      }
     });
   }
 
