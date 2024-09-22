@@ -23,9 +23,6 @@ const routes: Routes = [
     CommonModule,
     RouterModule.forChild(routes)
   ],
-  exports: [
-    HomeComponent
-  ],
   providers: [
     InitGameServcie,
     PopupGameServcie,

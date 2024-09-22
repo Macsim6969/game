@@ -134,10 +134,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     return Math.floor(Math.random() * max);
   }
 
-  private getAvailableIndices(): number[] {
-    // Получаем список индексов блоков, которые еще не были заняты
-    return this.gameStateService.getAvailableIndices(this.allArray.toArray());
-  }
 
   private checkGameEnd() {
     if (this.playerScore >= 10 || this.computerScore >= 10) {
@@ -151,12 +147,6 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private checkWhoseWin() {
     this.gameStateService.checkWhoseWin(this.playerScore, this.computerScore);
-  }
-
-  public getFormattedRemainingTime(): string {
-    const seconds = Math.floor(this.remainingTime / 1000);
-    const milliseconds = this.remainingTime % 1000;
-    return `${seconds}.${milliseconds}`;
   }
 
   private resetGame() {
@@ -173,6 +163,12 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private resetAllBlocks() {
     this.gameStateService.resetBlocks(this.allArray.toArray(), this.renderer);
+  }
+
+  public getFormattedRemainingTime(): string {
+    const seconds = Math.floor(this.remainingTime / 1000);
+    const milliseconds = this.remainingTime % 1000;
+    return `${seconds}.${milliseconds}`;
   }
 
   ngOnDestroy(): void {
